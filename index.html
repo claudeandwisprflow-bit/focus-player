@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Focus Player</title>
+<style>
+:root{--bg:#0b0d12;--panel:#12151c;--panel2:#171b24;--line:#232836;--text:#e6e9f0;--muted:#8a92a6;--accent:#6c8cff;--accent2:#8b7bff;--ok:#4ade80;--danger:#f87171;color-scheme:dark;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;transition:.15s}
+button:hover{border-color:var(--accent);color:#fff}
+button.primary{background:var(--accent);border-color:var(--accent);color:#0b0d12;font-weight:600}
+button.primary:hover{background:#8aa4ff;color:#0b0d12}
+button.ghost{background:none;border-color:transparent;color:var(--muted);padding:4px 8px}
+button.ghost:hover{color:var(--danger)}
+input[type=text],textarea{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;outline:none}
+input:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:90px}
+header{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+header .logo{font-weight:700;letter-spacing:.3px;white-space:nowrap}
+header .logo span{color:var(--accent)}
+header form{display:flex;gap:8px;flex:1;min-width:0}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;padding:16px;max-width:1500px;margin:auto}
+@media(max-width:960px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.player{aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.player iframe{width:100%;height:100%;border:0;display:block}
+.empty{display:flex;height:100%;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:20px}
+.title{font-size:19px;font-weight:650;margin:14px 0 4px;width:100%;background:none;border:1px solid transparent;padding:4px 6px;border-radius:8px}
+.title:hover{border-color:var(--line)}
+.meta{color:var(--muted);font-size:12px;padding:0 6px 10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.meta a{color:var(--accent);text-decoration:none}
+.tabs{display:flex;gap:4px;padding:8px 8px 0;border-bottom:1px solid var(--line)}
+.tab{background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:8px 14px;color:var(--muted)}
+.tab.on{color:var(--text);border-color:var(--accent)}
+.pane{padding:14px;display:none}.pane.on{display:block}
+.hint{color:var(--muted);font-size:12px;margin:0 0 8px}
+.side{display:flex;flex-direction:column;gap:16px}
+.timer{padding:14px}
+.clock{font-variant-numeric:tabular-nums;font-size:42px;font-weight:700;letter-spacing:1px;text-align:center;margin:4px 0 10px}
+.clock.done{color:var(--ok)}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.row.c{justify-content:center}
+.seg button{padding:5px 10px;font-size:12px}
+.seg button.on{background:var(--accent2);border-color:var(--accent2);color:#0b0d12;font-weight:600}
+.notes{padding:14px}
+.notes h3,.timer h3{margin:0 0 10px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.now{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600}
+.list{margin-top:12px;display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow:auto}
+.note{display:flex;gap:8px;align-items:flex-start;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px}
+.note .ts{background:rgba(108,140,255,.14);color:var(--accent);border:0;padding:2px 8px;font-variant-numeric:tabular-nums;font-size:12px;flex:none}
+.note .tx{flex:1;outline:none;white-space:pre-wrap;word-break:break-word;min-height:20px}
+.drawer{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:20;padding:16px}
+.drawer.on{display:flex}
+.modal{width:min(560px,100%);max-height:85vh;overflow:auto;padding:18px}
+.lib{display:flex;gap:10px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--panel2)}
+.lib .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.lib .n:hover{color:var(--accent)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--accent);color:#0b0d12;padding:8px 16px;border-radius:20px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:30}
+.toast.on{opacity:1}
+input[type=text],textarea{font-size:16px}
+button{min-height:36px}
+@media(max-width:960px){
+  header{position:static;flex-wrap:wrap;padding:10px 12px}
+  header form{flex:1 1 100%;order:3}
+  header .logo{flex:1}
+  .wrap{padding:0 12px 24px;gap:12px}
+  main{display:contents}
+  .player{order:1;position:sticky;top:env(safe-area-inset-top,0px);z-index:4;border-radius:0 0 12px 12px;margin:0 -12px;border-left:0;border-right:0;box-shadow:0 6px 16px rgba(0,0,0,.5)}
+  .title{order:2;margin:2px 0 0}
+  .side{order:3}
+  main .card{order:4}
+  .list{max-height:none}
+  .clock{font-size:36px}
+  button{min-height:42px}
+  .note .ts,.note .ghost{min-height:34px}
+  .tab{flex:1}
+  .drawer{align-items:flex-end;padding:0}
+  .modal{border-radius:16px 16px 0 0;max-height:80vh}
+  .lib{padding:10px}
+}
+@media(max-width:380px){.clock{font-size:30px}.seg button{padding:5px 8px}}
+.player{position:relative}
+.perr{position:absolute;inset:0;background:rgba(11,13,18,.96);display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;text-align:center;padding:16px;z-index:2}
+.perr p{margin:0;max-width:420px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Focus<span>Player</span></div>
+  <form id="f"><input id="url" type="text" placeholder="Paste a YouTube link…" autocomplete="off"><button class="primary">Watch</button></form>
+  <button id="libBtn">Library</button>
+</header>
+
+<div class="wrap">
+  <main>
+    <div class="player" id="player"><div class="empty">Paste a YouTube link above.<br>Only the video loads: no recommendations, no feed, no other videos.</div></div>
+    <input class="title" id="title" placeholder="Video title" spellcheck="false">
+    <div class="card">
+      <div class="tabs">
+        <button class="tab on" data-t="desc">Description</button>
+        <button class="tab" data-t="com">Comments</button>
+      </div>
+      <div class="pane on" id="p-desc">
+        <p class="hint">Paste the description here (copy it from YouTube once). It is saved with the video.</p>
+        <textarea id="desc" placeholder="Description…" style="min-height:160px"></textarea>
+      </div>
+      <div class="pane" id="p-com">
+        <p class="hint">Paste useful comments here. One per line works well.</p>
+        <textarea id="comments" placeholder="Comments…" style="min-height:160px"></textarea>
+      </div>
+    </div>
+  </main>
+
+  <aside class="side">
+    <section class="card timer">
+      <h3>Study timer</h3>
+      <div class="clock" id="clock">00:00</div>
+      <div class="row c seg" id="modes" style="margin-bottom:8px">
+        <button data-m="up" class="on">Stopwatch</button><button data-m="down">Countdown</button>
+      </div>
+      <div class="row c seg" id="presets" style="margin-bottom:10px;display:none">
+        <button data-p="15">15m</button><button data-p="25" class="on">25m</button><button data-p="45">45m</button><button data-p="60">60m</button>
+        <input id="custom" type="text" inputmode="numeric" placeholder="min" style="width:64px;padding:5px 8px">
+      </div>
+      <div class="row c"><button class="primary" id="tgo">Start</button><button id="treset">Reset</button></div>
+    </section>
+
+    <section class="card notes">
+      <h3>Notes <span class="now" id="now" style="float:right">0:00</span></h3>
+      <textarea id="ntext" style="min-height:64px" placeholder="Type a note, press Enter to stamp it at the current time (Shift+Enter for a new line)"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="primary" id="add">Add at current time</button>
+        <button id="exp">Export document</button>
+      </div>
+      <div class="list" id="nlist"></div>
+    </section>
+  </aside>
+</div>
+
+<div class="drawer" id="libD"><div class="card modal">
+  <div class="row" style="justify-content:space-between;margin-bottom:10px"><b>Library</b><button id="libX">Close</button></div>
+  <div id="libList"></div>
+  <label class="hint" style="display:flex;gap:6px;align-items:center;margin-top:10px"><input type="checkbox" id="incDesc" checked> Include description and comments in the document</label>
+  <div class="row" style="margin-top:10px"><button class="primary" id="expSel">Export selected as one document</button><button id="copySel">Copy instead</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const KEY="focusplayer:v1";
+let db={videos:{}},cur=null,curTime=0,lastMsg=0,host="www.youtube-nocookie.com";
+
+function load(){try{const r=localStorage.getItem(KEY);if(r)db=JSON.parse(r)||db;}catch(e){}if(!db.videos)db.videos={};}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("on"),1800);}
+function fmt(s){s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return(h?h+":"+String(m).padStart(2,"0"):m)+":"+String(x).padStart(2,"0");}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function parse(u){
+  u=u.trim();let id=null,t=0;
+  if(/^[\w-]{11}$/.test(u))id=u;
+  else{try{const x=new URL(/^https?:/.test(u)?u:"https://"+u);const h=x.hostname.replace(/^www\.|^m\./,"");
+    if(h==="youtu.be")id=x.pathname.slice(1,12);
+    else if(h.endsWith("youtube.com")||h.endsWith("youtube-nocookie.com")){
+      id=x.searchParams.get("v");
+      const m=x.pathname.match(/^\/(?:shorts|live|embed|v)\/([\w-]{11})/);if(!id&&m)id=m[1];}
+    const tv=x.searchParams.get("t")||x.searchParams.get("start");
+    if(tv){const m=String(tv).match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);if(m)t=(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0);}
+  }catch(e){}}
+  return id&&/^[\w-]{11}$/.test(id)?{id,t}:null;
+}
+
+function frame(){return $("#player iframe");}
+function post(o){const f=frame();if(f&&f.contentWindow)f.contentWindow.postMessage(JSON.stringify(o),"*");}
+function seek(s){post({event:"command",func:"seekTo",args:[s,true]});post({event:"command",func:"playVideo",args:[]});}
+
+function showErr(code){
+  const old=$("#player .perr");if(old)old.remove();
+  const why=code==153?"YouTube did not get a valid referrer from this page (error 153). Hosting the app on its own https address usually fixes it."
+    :(code==101||code==150||code==152)?"The video owner has disabled embedding for this video (error "+code+"). Live streams and replays often do this."
+    :(code==100)?"This video is private or was removed.":"The player could not load this video (error "+code+").";
+  const d=document.createElement("div");d.className="perr";
+  d.innerHTML='<b>Video could not be embedded</b><p>'+why+'</p><div class="row c"><button id="eAlt">Try alternate player</button><button id="eTab" class="primary">Watch in a new tab</button></div><p style="font-size:12px">Your notes and timer still work here.</p>';
+  $("#player").appendChild(d);
+  $("#eAlt").onclick=()=>open(cur,Math.floor(curTime),host==="www.youtube-nocookie.com");
+  $("#eTab").onclick=()=>window.open("https://www.youtube.com/watch?v="+cur,"_blank","noopener");
+}
+
+function open(id,start,alt){
+  host=alt?"www.youtube.com":"www.youtube-nocookie.com";
+  if(!db.videos[id])db.videos[id]={id,title:"",desc:"",comments:"",notes:[],added:Date.now()};
+  cur=id;curTime=start||0;$("#now").textContent=fmt(curTime);
+  const v=db.videos[id];
+  $("#player").innerHTML='<iframe src="https://'+host+'/embed/'+id+'?rel=0&modestbranding=1&enablejsapi=1&playsinline=1&start='+Math.floor(start||0)+(/^https?:/.test(location.origin)?'&origin='+encodeURIComponent(location.origin):'')+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+  frame().addEventListener("load",()=>{post({event:"listening",id:1,channel:"widget"});});
+  $("#title").value=v.title;$("#desc").value=v.desc;$("#comments").value=v.comments;
+  renderNotes();save();
+}
+
+window.addEventListener("message",e=>{
+  if(!/youtube(-nocookie)?\.com$/.test(new URL(e.origin).hostname))return;
+  let d=e.data;try{if(typeof d==="string")d=JSON.parse(d);}catch(x){return;}
+  const t=d&&d.info&&d.info.currentTime;
+  if(d&&d.event==="onError"){showErr(d.info);return;}
+  if(typeof t==="number"){curTime=t;lastMsg=Date.now();$("#now").textContent=fmt(t);}
+});
+setInterval(()=>{if(frame()&&Date.now()-lastMsg>2500)post({event:"listening",id:1,channel:"widget"});},2000);
+
+$("#f").addEventListener("submit",e=>{
+  e.preventDefault();const p=parse($("#url").value);
+  if(!p){toast("That doesn't look like a YouTube link");return;}
+  open(p.id,p.t);$("#url").value="";
+});
+["title","desc","comments"].forEach(k=>$("#"+k).addEventListener("input",e=>{if(cur){db.videos[cur][k]=e.target.value;save();}}));
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===b));
+  $("#p-desc").classList.toggle("on",b.dataset.t==="desc");$("#p-com").classList.toggle("on",b.dataset.t==="com");
+});
+
+/* notes */
+function renderNotes(){
+  const l=$("#nlist");l.innerHTML="";
+  if(!cur)return;
+  const notes=db.videos[cur].notes;
+  notes.forEach((n,i)=>{
+    const d=document.createElement("div");d.className="note";
+    d.innerHTML='<button class="ts">'+fmt(n.t)+'</button><div class="tx" contenteditable="plaintext-only"></div><button class="ghost" title="Delete">✕</button>';
+    const tx=d.querySelector(".tx");tx.textContent=n.text;
+    tx.addEventListener("input",()=>{n.text=tx.textContent;save();});
+    d.querySelector(".ts").onclick=()=>seek(n.t);
+    d.querySelector(".ghost").onclick=()=>{notes.splice(i,1);save();renderNotes();};
+    l.appendChild(d);
+  });
+}
+function addNote(){
+  if(!cur){toast("Load a video first");return;}
+  const txt=$("#ntext").value.trim();
+  const notes=db.videos[cur].notes;
+  notes.push({t:Math.floor(curTime),text:txt});
+  notes.sort((a,b)=>a.t-b.t);
+  $("#ntext").value="";save();renderNotes();
+}
+$("#add").onclick=addNote;
+$("#ntext").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();addNote();}});
+
+/* timer */
+let mode="up",mins=25,run=false,base=0,startedAt=0,total=25*60;
+function elapsed(){return base+(run?(Date.now()-startedAt)/1000:0);}
+function drawClock(){
+  const e=elapsed();let s=mode==="up"?e:total-e;
+  const c=$("#clock");c.textContent=fmt(Math.max(0,Math.round(s)));
+  if(mode==="down"&&s<=0&&run){run=false;base=total;$("#tgo").textContent="Start";c.classList.add("done");toast("Time's up");try{new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=").play();}catch(x){}}
+}
+setInterval(drawClock,250);
+$("#tgo").onclick=()=>{
+  $("#clock").classList.remove("done");
+  if(run){base=elapsed();run=false;$("#tgo").textContent="Resume";}
+  else{if(mode==="down"&&base>=total)base=0;startedAt=Date.now();run=true;$("#tgo").textContent="Pause";}
+};
+$("#treset").onclick=()=>{run=false;base=0;$("#tgo").textContent="Start";$("#clock").classList.remove("done");drawClock();};
+document.querySelectorAll("#modes button").forEach(b=>b.onclick=()=>{
+  mode=b.dataset.m;document.querySelectorAll("#modes button").forEach(x=>x.classList.toggle("on",x===b));
+  $("#presets").style.display=mode==="down"?"flex":"none";$("#treset").click();
+});
+document.querySelectorAll("#presets button").forEach(b=>b.onclick=()=>{
+  total=+b.dataset.p*60;document.querySelectorAll("#presets button").forEach(x=>x.classList.toggle("on",x===b));$("#custom").value="";$("#treset").click();
+});
+$("#custom").addEventListener("change",e=>{const m=parseInt(e.target.value);if(m>0){total=m*60;document.querySelectorAll("#presets button").forEach(x=>x.classList.remove("on"));$("#treset").click();}});
+
+/* library + export */
+function libRender(){
+  const l=$("#libList");const vs=Object.values(db.videos).sort((a,b)=>b.added-a.added);
+  l.innerHTML=vs.length?"":'<p class="hint">No videos yet.</p>';
+  vs.forEach(v=>{
+    const d=document.createElement("div");d.className="lib";
+    d.innerHTML='<input type="checkbox" data-id="'+v.id+'"><span class="n">'+esc(v.title||v.id)+' <span class="hint">· '+v.notes.length+' notes</span></span><button class="ghost" title="Remove">✕</button>';
+    d.querySelector(".n").onclick=()=>{$("#libD").classList.remove("on");open(v.id,0);};
+    d.querySelector(".ghost").onclick=()=>{if(confirm("Remove this video and its notes?")){delete db.videos[v.id];if(cur===v.id)cur=null;save();libRender();}};
+    l.appendChild(d);
+  });
+}
+function buildDoc(ids,inc){
+  let o="";
+  ids.forEach((id,k)=>{
+    const v=db.videos[id];if(!v)return;
+    const url="https://www.youtube.com/watch?v="+id;
+    o+=(k?"\n---\n\n":"")+"# "+(v.title||id)+"\n\nSource: "+url+"\n\n";
+    if(inc&&v.desc.trim())o+="## Description\n\n"+v.desc.trim()+"\n\n";
+    if(inc&&v.comments.trim())o+="## Saved comments\n\n"+v.comments.trim()+"\n\n";
+    o+="## Notes\n\n";
+    o+=v.notes.length?v.notes.map(n=>"- ["+fmt(n.t)+"]("+url+"&t="+n.t+"s) "+n.text).join("\n"):"_No notes yet._";
+    o+="\n";
+  });
+  return o;
+}
+async function doExport(ids,inc){
+  if(!ids.length){toast("Nothing selected");return;}
+  const data=buildDoc(ids,inc);
+  try{
+    const dl=window.claude&&await claude.use("downloads");
+    if(dl){await dl.save({filename:(ids.length===1?(db.videos[ids[0]].title||ids[0]).replace(/[^\w\- ]+/g,"").trim().slice(0,60)||"notes":"study-notes")+".md",data});return;}
+  }catch(e){if(e&&e.code==="declined")return;}
+  doCopy(data);
+}
+async function doCopy(data){
+  try{await navigator.clipboard.writeText(data);toast("Copied as Markdown");}
+  catch(e){const t=document.createElement("textarea");t.value=data;document.body.appendChild(t);t.select();try{document.execCommand("copy");toast("Copied as Markdown");}catch(x){toast("Copy failed");}t.remove();}
+}
+const sel=()=>[...document.querySelectorAll("#libList input:checked")].map(x=>x.dataset.id);
+$("#exp").onclick=()=>{if(!cur){toast("Load a video first");return;}doExport([cur],true);};
+$("#libBtn").onclick=()=>{libRender();$("#libD").classList.add("on");};
+$("#libX").onclick=()=>$("#libD").classList.remove("on");
+$("#expSel").onclick=()=>doExport(sel(),$("#incDesc").checked);
+$("#copySel").onclick=()=>{const ids=sel();if(!ids.length){toast("Nothing selected");return;}doCopy(buildDoc(ids,$("#incDesc").checked));};
+
+load();
+</script>
+</body>
+</html>
